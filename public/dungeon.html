@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>3Dvtt</title>
+    <meta name="description" content="A free, web based, virtual tabletop."/>
+    <meta name="keywords" content="ttrpg, D&D, DnD, VTT, Virtual Tabletop">
+    <meta name="author" content="Emmett Baber">
+    <link rel="stylesheet" href="styles.css" />
+
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.5.0/socket.io.slim.js"></script>
+    <script src="/easyrtc/easyrtc.js"></script>
+    <script src="https://unpkg.com/networked-aframe@^0.12.0/dist/networked-aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-randomizer-components@3.0.2/dist/aframe-randomizer-components.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-environment-component@1.3.7/dist/aframe-environment-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.4.0/dist/aframe-extras.min.js"></script>
+                                                                                                                                             <script src="/js/utils.js"></script>
+    <script src="/js/network-templates.js"></script>
+    <script src="/js/player-info.js"></script>
+    <script src="/js/spawn-in-circle.component.js"></script>
+    <script src="/js/spawner-persistent.component.js"></script>
+    <script src="/js/persistent-p2p.component.js"></script>
+    <script src="/js/dungeonspawner.js"></script>
+    <script src="/js/beholder-controls.js"></script>
+    <script src="/js/player-controls.js"></script>
+    <script src="/js/token-selector.js"></script>
+    <script src="/js/button-logic.js"></script>
+    <script src="/js/token-interaction.js"></script>
+  </head>
+  
+  <!-- This is the body. The a-scene tag is where you can change the background color. -->
+  <body>
+    <a-scene
+      background="color: grey"
+      persistent-p2p
+      networked-scene="
+        room: integrated-experience;
+        debug: true;
+        adapter: wseasyrtc;
+        audio: true;"
+      renderer="physicallyCorrectLights: true;"
+      cursor="rayOrigin: mouse"
+      raycaster="objects:.raycastable"
+    >
+      <!-- This is the where we define things we use in our scenes. Each asset you want to bring into your scene needs to be defined here. https://aframe.io/docs/1.6.0/core/asset-management-system.html#main -->
+      <a-assets>
+        <template id="avatar-template">
+          <a-entity class="avatar" player-info>
+            <a-entity
+              class="head"
+              networked-audio-source
+              gltf-model="#beholderModel"
+              scale=".25 .25 .25"
+              rotation="0 0 0"
+              position="0 -.5 0"
+              material="color:#FFFFFF"
+            ></a-entity>
+            <a-text
+              class="nametag"
+              value="?"
+              rotation="0 180 0"
+              position="0 .85 0"
+              side="double"
+              align="center"
+              scale=".5 .5 .5"
+              geometry="primitive: plane; width: auto; height: auto; side: double"
+              material="color: #eee; opacity: .5"
+            ></a-text>
+          </a-entity>
+        </template>
+
+        <template id="token-template">
+          <a-entity class="token" token-interaction></a-entity>
+        </template>
+      
+        <a-asset-item
+          id="beholderModel"
+          src="https://cdn.glitch.global/86fd29b1-4d6c-4dbb-b735-00c644907515/beholderedit_v2.glb?v=1724775631179"
+        ></a-asset-item>
+        <a-asset-item
+          id="goblinModel"
+          src="https://cdn.glitch.global/86fd29b1-4d6c-4dbb-b735-00c644907515/GoblinToken3.glb?v=1720442465141"
+        ></a-asset-item>
+        <a-asset-item
+          id="questionmark"
+          src="https://cdn.glitch.global/86fd29b1-4d6c-4dbb-b735-00c644907515/questionmark.glb?v=1724628265718"
+        ></a-asset-item>
+       
+        <!-- Assets for the Dungeon Spawner. many thanks to watabou! -->
+        <a-asset-item
+          id="wall01"
+          src="https://cdn.glitch.global/86fd29b1-4d6c-4dbb-b735-00c644907515/wallBlock.glb?v=1719421361207"
+        ></a-asset-item>
+        <a-asset-item
+          id="floor01"
+          src="https://cdn.glitch.global/86fd29b1-4d6c-4dbb-b735-00c644907515/road.glb?v=1719421360827"
+        ></a-asset-item>
+        <a-asset-item
+          id="floor02"
+          src="https://cdn.glitch.global/86fd29b1-4d6c-4dbb-b735-00c644907515/planks.glb?v=1719421360443"
+        ></a-asset-item>
+        <a-asset-item
+          id="column01"
+          src="https://cdn.glitch.global/86fd29b1-4d6c-4dbb-b735-00c644907515/pillarStone.glb?v=1719421360004"
+        ></a-asset-item>
+        <a-asset-item
+          id="rotunda01"
+          src="https://cdn.glitch.global/86fd29b1-4d6c-4dbb-b735-00c644907515/rotunda8.glb?v=1720202814433"
+        ></a-asset-item>
+        <a-asset-item
+          id="rotunda02"
+          src="https://cdn.glitch.global/86fd29b1-4d6c-4dbb-b735-00c644907515/rotunda16.glb?v=1720202815213"
+        ></a-asset-item>
+        <a-asset-item
+          id="door01"
+          src="https://cdn.glitch.global/86fd29b1-4d6c-4dbb-b735-00c644907515/wallDoor.glb?v=1719421497459"
+        ></a-asset-item>
+        <a-asset-item
+          id="door02"
+          src="https://cdn.glitch.global/86fd29b1-4d6c-4dbb-b735-00c644907515/wallDoorwayRound.glb?v=1719421498070"
+        ></a-asset-item>
+        <img id="underground" src="https://cdn.glitch.global/86fd29b1-4d6c-4dbb-b735-00c644907515/drachenfels_cellar_2k.jpg?v=1737398871729">
+      </a-assets>
+
+      <!-- Our Beholder! 
+      <a-entity
+        id="player"
+        camera
+        networked="template:#avatar-template;attachTemplateToLocal:false;"
+        position="0 2 0"
+        spawner-persistent="template:#token-template"
+        look-controls="enabled: true" 
+        beholder-controls
+        raycaster="far: 1000; showLine: false"
+      >
+        <a-entity id="cursor"
+            cursor
+            position="0 0 -.1"
+            geometry="primitive: ring; radiusInner: 0.001; radiusOuter: 0.002"
+            material="color: black; shader: flat; opacity: .5"
+            hide-on-enter-vr>
+        </a-entity>
+        <a-entity id="grabber"
+            position="0 0 -1"
+            geometry="primitive: ring; radiusInner: 0.001; radiusOuter: 0.002"
+            material="color: red; shader: flat; opacity: .5"
+            hide-on-enter-vr>
+        </a-entity>
+        <a-entity id="leftHand" hand-tracking-grab-controls="hand: left;"></a-entity>
+        <a-entity id="rightHand" hand-tracking-grab-controls="hand: right;"></a-entity>
+      </a-entity> -->
+      
+      <a-entity
+        id="player"
+        camera
+        networked="template:#player-template;attachTemplateToLocal:false;"
+        position="0 2 0"
+        player-controls
+        look-controls="enabled: true"
+      >
+        <a-entity id="leftHand" hand-tracking-grab-controls="hand: left;"></a-entity>
+        <a-entity id="rightHand" hand-tracking-grab-controls="hand: right;"></a-entity>
+      </a-entity>
+  
+      <!--                 />                                             -->
+      <!--   (           //-------------------------------------(         -->       
+      <!--  (*)OXOXOXOXO(*>======================================\        -->
+      <!--   (           \\---------------------------------------)       -->
+      <!--                \>                    OUR SCENE                 -->
+      
+      <a-entity id="dungeon" dungeon-generator></a-entity>
+
+      <!-- THA BAHTULGRIDH --> 
+      <a-grid
+        position=".5 0 .5"
+        material="alphaTest: 0.9; depthTest: true; blending: normal; src: https://cdn.glitch.global/3249eb5b-d053-482d-9edf-98e70608d9ad/output-onlinepngtools.png?v=1719102850217"
+      ></a-grid>
+      
+      <a-entity link="href: index.html; title: stairs up; image: #homeThumbnail"></a-entity>
+      <a-sky src="#underground" rotation="0 150 0"></a-sky>
+      <!--                           ___                                                          -->
+      <!--                          ( ((                                                          -->
+      <!--                           ) ))                                                         -->
+      <!--  .::.                    / /(                                                          -->
+      <!-- 'M .-;-.-.-.-.-.-.-.-.-/| ((::::::::::::::::::::::::::::::::::::::::::::::.._          -->
+      <!--(J ( ( ( ( ( ( ( ( ( ( ( |  ))   -====================================-      _.>        -->
+      <!-- `P `-;-`-`-`-`-`-`-`-`-\| ((::::::::::::::::::::::::::::::::::::::::::::::''           -->
+      <!--  `::'                    \ \(                                                          -->
+      <!--                           ) ))                                                         -->
+      <!--                          (_((                                                          -->
+    </a-scene>
+      
+    <!--  UI AND BUTTONS AND THINGS -->
+
+    <div id="buttons">
+      <button id="helpButton">❓</button>
+      <button id="optionsButton">⚙️</button>
+      <button id="tokenButton">👺</button>
+      <button id="sceneButton">📜</button>
+      <button id="chatButton">💬</button>
+      <button id="movementButton">🕹️</button>
+    </div>
+
+    <div id="panel">
+      <div id="helpPanel">
+        <h2>Welcome to 3DnD!</h2>
+        <p>An open, creative, VTT.</p>
+        <ul>
+          <li>❓ help! (this)</li>
+          <li>⚙️ change name and color</li>
+          <li>👺 spawn tokens</li>
+          <li>💬 to chat</li>
+          <li>🕹️ movement controls</li>
+          <li>📜 scene description</li>
+        </ul>
+        <h3>Controls:</h3>
+        <ul>
+          <li>WASD or Arrow Keys: Move</li>
+          <li>Mouse Look or Touch Drag: Look Around</li>
+          <li>Click + Drag (Desktop): Grab Objects</li>
+        </ul>
+        <p>
+          Remix your own here:
+          <a href="https://glitch.com/edit/#!/remix/your-project-name-here"
+            ><img
+              alt="Remix on Glitch"
+              src="https://cdn.gomix.com/f3620a78-0ad3-4f81-a271-c8a4faa20f86%2Fremix-button.svg"
+          /></a>
+        </p>
+      </div>
+
+      <div id="optionsPanel" style="display: none;">
+        Color and Name
+        <button
+          id="color-changer"
+          style="z-index: 100"
+          onclick="let newColor = window.ntExample.randomColor();
+                 document.getElementById('player').setAttribute('player-info', 'color', newColor); 
+                 document.querySelector('#color-changer').style.backgroundColor = newColor;
+                 document.querySelector('#color-changer').style.color = newColor;
+        "
+        >
+          ■
+        </button>
+        <input
+          id="username-overlay"
+          style="z-index: 100"
+          oninput="document.getElementById('player').setAttribute('player-info', 'name', this.value)"
+        />
+      </div>
+
+      <div id="tokenPanel" style="display: none;">
+        <h2>Select Token</h2>
+        <select id="tokenList" name="Tokens" size="6" style="width: 300px">
+          <!-- This is where the tokens <option> tags go -->
+        </select>
+        <button id="scaleUpButton">Bigger</button>
+        <button id="scaleDownButton">Smaller</button>
+        <button id="deleteButton">Delete</button>
+      </div>
+      
+      
+      <!--                 />                                             -->
+      <!--   (           //-------------------------------------(         -->       
+      <!--  (*)OXOXOXOXO(*>======================================\        -->
+      <!--   (           \\---------------------------------------)       -->
+      <!--                \>                    OUR SCENE DESCRIPTION     -->
+      
+      <div id="scenePanel" style="display: none;">
+        The keep of the One-eyed Lord is situated deep in the wasteland, far from the nearest town. These days it is overrun with goats.
+        <a href="https://3dvtt.glitch.me/">Exit the dungeon.</a>
+      </div>
+
+      <!--                           ___                                                          -->
+      <!--                          ( ((                                                          -->
+      <!--                           ) ))                                                         -->
+      <!--  .::.                    / /(                                                          -->
+      <!-- 'M .-;-.-.-.-.-.-.-.-.-/| ((::::::::::::::::::::::::::::::::::::::::::::::.._          -->
+      <!--(J ( ( ( ( ( ( ( ( ( ( ( |  ))   -====================================-      _.>        -->
+      <!-- `P `-;-`-`-`-`-`-`-`-`-\| ((::::::::::::::::::::::::::::::::::::::::::::::''           -->
+      <!--  `::'                    \ \(                                                          -->
+      <!--                           ) ))                                                         -->
+      <!--                          (_((                                                          -->
+                                                                                                 
+
+      <div id="chatPanel" style="display: none;">
+        <ul>
+          <div class="chat">
+            <form id="form">
+              <div style="display: flex">
+                <input type="text" name="" autocomplete="off" id="input" />
+                <button id="send-btn">Send</button>
+              </div>
+            </form>
+            <div class="messages"></div>
+          </div>
+        </ul>
+      </div>
+
+      <!-- Movement Panel -->
+      <div id="movementPanel" style="display: none;">
+        <button id="Space">+</button>
+        <button id="KeyW">↑</button>
+        <button id="ControlLeft">-</button>
+        <button id="KeyA">←</button>
+        <button id="KeyS">↓</button>
+        <button id="KeyD">→</button>
+      </div>
+    </div>
+  </body>
+</html>
